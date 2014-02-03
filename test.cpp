@@ -1,6 +1,9 @@
+
 #include <iostream>
 #include <fstream>
-char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
+#include "CXPrimitiveType.h"
+#include <string.h>
+char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09};
 struct mybitset
 {
   char mybit1:1;
@@ -63,7 +66,7 @@ void mystringsearch()
   printf("mytest is %s\n",mytest);
   std::cout<<"his's pos is "<<mystr.find("his")<<std::endl;
   std::cout<<"mystr's size is "<<mystr.size()<<std::endl;
-  std::cout<<"strstr(mytest,\"his\") is "<<(uint64_t)(strstr(mytest,"lo")-mytest)<<std::endl;
+  std::cout<<"strstr(mytest,\"his\") is "<<(CX_UINT64)(strstr(mytest,"lo")-mytest)<<std::endl;
 }
 
 void myfileread()
@@ -82,14 +85,14 @@ typedef struct tag_F4F_TagInfo
   bool largesize;
   union
   {
-    uint32_t size_32;
-    uint64_t size_64;
+    CX_UINT32 size_32;
+    CX_UINT64 size_64;
   }size;
   char name[4];
   int pos_beg;
 }F4F_TagInfo;
 
-void mycvt2localendian(void* input,int size)
+void mycvtbigendian(void* input,int size)
 {
   char* ptr=(char*)input;
   if(myisbigendian())
@@ -104,23 +107,34 @@ void mycvt2localendian(void* input,int size)
 
 }
 
+
+
+void mywriteflvheader(char* flvpath)
+{
+  std::ofstream flv_file;
+  flv_file.open(flvpath,std::ofstream::app|std::ifstream::binary);
+  flv_file.write(FLVHEADER,sizeof(FLVHEADER));
+  flv_file.close();
+}
+
+int prev_size=0;
 int myFindF4FTagByName(char* tagname,F4F_TagInfo* taginfo,char* filepath)
 {
   int ret=0;
   std::fstream fs(filepath,std::fstream::in|std::fstream::binary);
-  uint32_t src_tagname,dst_tagname;
+  CX_UINT32 src_tagname,dst_tagname;
   fs.seekg(std::fstream::beg);
   while(fs.tellg()!=std::fstream::end)
     {
       taginfo->pos_beg=fs.tellg();
       fs.read((char*)&taginfo->size.size_32,4);
-      mycvt2localendian(&taginfo->size.size_32,4);
+      mycvtbigendian(&taginfo->size.size_32,4);
       fs.read((char*)taginfo->name,4);
       if(taginfo->size.size_32==1)
 	{
 	  taginfo->largesize=true;
 	  fs.read((char*)&taginfo->size.size_64,8);
-	  mycvt2localendian(&taginfo->size.size_64,8);
+	  mycctbigendian(&taginfo->size.size_64,8);
 	  fs.seekg(taginfo->pos_beg+taginfo->size.size_64);
 	}
       else
@@ -128,20 +142,22 @@ int myFindF4FTagByName(char* tagname,F4F_TagInfo* taginfo,char* filepath)
 	  taginfo->largesize=false;
 	  fs.seekg(taginfo->pos_beg+taginfo->size.size_32);
 	}
-      if((*((uint32_t*)taginfo->name))==(*((uint32_t*)tagname)))
+      if((*((CX_UINT32*)taginfo->name))==(*((CX_UINT32*)tagname)))
 	  return 0;
     }
   fs.close();
   return -1;
 }
 
+
+
 void myf4f2flv(char* f4fpath,char* flvpath)
 {
   std::ofstream flv_file;
   std::ifstream f4f_file;
-  f4f_file.open(f4fpath,std::ofstream::in|std::ofstream::binary);
-  flv_file.open(flvpath,std::ifstream::app|std::ifstream::binary);
-  flv_file.write(FLVHEADER,13);
+  f4f_file.open(f4fpath,std::ifstream::in|std::ofstream::binary);
+  flv_file.open(flvpath,std::ofstream::app|std::ifstream::binary);
+  flv_file.write((char*)&prev_size,sizeof(prev_size));
   F4F_TagInfo myinfo;
   myFindF4FTagByName("mdat",&myinfo,f4fpath);
   char buffer[10000];
@@ -150,15 +166,22 @@ void myf4f2flv(char* f4fpath,char* flvpath)
   if(myinfo.largesize)
     {
       f4f_file.seekg(myinfo.pos_beg+16);
+      std::cout<<"largesize is true,it's  "<<myinfo.size.size_64<<std::endl;
+      prev_size=myinfo.size.size_64;
+      std::cout<<"prev_size is "<<prev_size<<std::endl;
       count=(myinfo.size.size_64-16)/10000;
       left=(myinfo.size.size_64-16)%10000;
     }
   else
     {
+      std::cout<<"largesize is false,it's "<<myinfo.size.size_32<<std::endl;
+      prev_size=myinfo.size.size_32;
+      std::cout<<"prev_size is "<<prev_size<<std::endl;
       f4f_file.seekg(myinfo.pos_beg+8);
       count=(myinfo.size.size_32-8)/10000;
       left=(myinfo.size.size_32-8)/10000;
     }
+
   for(int n=0;n<count;n++)
     {
       f4f_file.read(buffer,10000);
@@ -166,14 +189,38 @@ void myf4f2flv(char* f4fpath,char* flvpath)
     }
   f4f_file.read(buffer,left);
   flv_file.write(buffer,left);
+  mycvtbigendian(&prev_size,sizeof(prev_size));
   f4f_file.close();
   flv_file.close();
 }
 
-int main()
+int main(int argc,char** argv)
 {
-  myf4f2flv("./test.f4f","./test.flv");
+  mywriteflvheader("test.flv");
+  char in_file[100];
+  while(in_file[0]!=32)
+    {
+      memset(in_file,0,100);
+      std::cout<<"input the input file"<<std::endl;
+      std::cin>>in_file;
+      myf4f2flv(in_file,"./test.flv");
+    }
+  std::cout<<"convertion is over"<<std::endl;
   return 0;
 
  
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
