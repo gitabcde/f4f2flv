@@ -3,7 +3,7 @@
 #include <fstream>
 #include "CXPrimitiveType.h"
 #include <string.h>
-char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09};
+char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
 struct mybitset
 {
   char mybit1:1;
@@ -134,7 +134,7 @@ int myFindF4FTagByName(char* tagname,F4F_TagInfo* taginfo,char* filepath)
 	{
 	  taginfo->largesize=true;
 	  fs.read((char*)&taginfo->size.size_64,8);
-	  mycctbigendian(&taginfo->size.size_64,8);
+	  mycvtbigendian(&taginfo->size.size_64,8);
 	  fs.seekg(taginfo->pos_beg+taginfo->size.size_64);
 	}
       else
@@ -157,7 +157,6 @@ void myf4f2flv(char* f4fpath,char* flvpath)
   std::ifstream f4f_file;
   f4f_file.open(f4fpath,std::ifstream::in|std::ofstream::binary);
   flv_file.open(flvpath,std::ofstream::app|std::ifstream::binary);
-  flv_file.write((char*)&prev_size,sizeof(prev_size));
   F4F_TagInfo myinfo;
   myFindF4FTagByName("mdat",&myinfo,f4fpath);
   char buffer[10000];
@@ -167,7 +166,7 @@ void myf4f2flv(char* f4fpath,char* flvpath)
     {
       f4f_file.seekg(myinfo.pos_beg+16);
       std::cout<<"largesize is true,it's  "<<myinfo.size.size_64<<std::endl;
-      prev_size=myinfo.size.size_64;
+      prev_size=myinfo.size.size_64-12;
       std::cout<<"prev_size is "<<prev_size<<std::endl;
       count=(myinfo.size.size_64-16)/10000;
       left=(myinfo.size.size_64-16)%10000;
@@ -175,7 +174,7 @@ void myf4f2flv(char* f4fpath,char* flvpath)
   else
     {
       std::cout<<"largesize is false,it's "<<myinfo.size.size_32<<std::endl;
-      prev_size=myinfo.size.size_32;
+      prev_size=myinfo.size.size_32-4;
       std::cout<<"prev_size is "<<prev_size<<std::endl;
       f4f_file.seekg(myinfo.pos_beg+8);
       count=(myinfo.size.size_32-8)/10000;
