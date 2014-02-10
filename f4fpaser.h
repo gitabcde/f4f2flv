@@ -23,13 +23,15 @@ char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00}
 class CF4FPaser
 {
  public:
+  CF4FPaser();
+  ~CF4FPaser();
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file);
   int GetTagInfoFromF4file(char* f4file,char* tagname,F4FTagInfo* taginfo);
-  ~CF4FPaser();
+  void AjustFlvTimeStamp();
  private:
-  std::ofstream flvfile;
-
-
+  std::fstream flvfile;
+  uint32_t lasttimestamp;
+  uint64_t lastpos;
 };
 

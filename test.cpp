@@ -3,6 +3,11 @@
 #include <fstream>
 #include "CXPrimitiveType.h"
 #include <string.h>
+#if((0x1234>>8)==0x12)
+#define CX_BIGENDIAN 1
+#else
+#define CX_BIGENDIAN 0
+#endif
 char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
 struct mybitset
 {
@@ -195,16 +200,8 @@ void myf4f2flv(char* f4fpath,char* flvpath)
 
 int main(int argc,char** argv)
 {
-  mywriteflvheader("test.flv");
-  char in_file[100];
-  while(in_file[0]!=32)
-    {
-      memset(in_file,0,100);
-      std::cout<<"input the input file"<<std::endl;
-      std::cin>>in_file;
-      myf4f2flv(in_file,"./test.flv");
-    }
-  std::cout<<"convertion is over"<<std::endl;
+  if(CX_BIGENDIAN)
+    std::cout<<"bigendian"<<std::endl;
   return 0;
 
  
