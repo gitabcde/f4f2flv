@@ -21,8 +21,9 @@ struct abst
  uint8_t drmdata;字符串，以\0结尾
  uint8_t metadata;字符串，以\0结尾
  uint8_t segRunTableCount; 
- struct asrt;
- struct afrt;
+ struct asrt[segRunTableCount];
+ uint8_t fragRunTableCount;
+ struct afrt[fragRunTableCount];
 };
 
 struct asrt
@@ -40,7 +41,7 @@ struct asrt
  struct tag_asrt_fraginfo
  {
   uint32_t firstSegment;
-  uint32_t fragmentsPerSegment;//暂时跟数据对不上，最后多了一个字节
+  uint32_t fragmentsPerSegment;
  }asrt_fraginfo[segcount];
 };
 
@@ -62,6 +63,9 @@ struct afrt
   uint32_t firstfragment;
   uint64_t firstfragmentTimesStamp;
   uint32_t fragmentDuration;
+#if fragmentDuration==0
+  uint8_t discontinusIndicater;
+#endif
  }afrt_fraginfo[fragEntries];	  
 };
 
