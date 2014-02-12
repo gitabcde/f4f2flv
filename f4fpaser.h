@@ -27,6 +27,7 @@ class CF4FPaser
   ~CF4FPaser();
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file,char* flvname);
+ private:
   int GetTagInfoFromF4file(char* f4file,char* tagname,F4FTagInfo* taginfo);
   void AjustFlvTimeStamp(char* flvname);
  private:

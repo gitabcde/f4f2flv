@@ -69,7 +69,13 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
   F4FTagInfo myinfo;
   flvfile.seekp(0,std::fstream::end);
   lastpos=flvfile.tellp();
-  GetTagInfoFromF4file(f4file,"mdat",&myinfo);
+  if(GetTagInfoFromF4file(f4file,"mdat",&myinfo)!=0)
+    {
+      flvfile.close();
+      f4f_file.close();
+      std::cout<<"wrong filecontent"<<std::endl;
+      return;
+    }
   char buffer[F4F_BUFFER_SIZE];
   int count,left;
   std::cout<<"filename is "<<f4file<<std::endl;
@@ -88,7 +94,7 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
       count=(myinfo.size.size_32-8)/F4F_BUFFER_SIZE;
       left=(myinfo.size.size_32-8)/F4F_BUFFER_SIZE;
     }
-
+  
   for(int n=0;n<count;n++)
     {
       f4f_file.read(buffer,F4F_BUFFER_SIZE);
@@ -248,10 +254,17 @@ int main()
   CF4FPaser myf4f;
   F4FTagInfo myinfo;
   myf4f.CreateFlvFile("mycf4f.flv");
-  myf4f.WriteFlvDataFromF4file("68.f4f","mycf4f.flv");
-  myf4f.WriteFlvDataFromF4file("71.f4f","mycf4f.flv");
-  myf4f.WriteFlvDataFromF4file("82.f4f","mycf4f.flv");
-  myf4f.WriteFlvDataFromF4file("83.f4f","mycf4f.flv");
+  std::string filename;
+  while(1)
+    {
+      std::cout<<"input f4f filename"<<std::endl;
+      std::cin>>filename;
+      if(filename=="")
+	break;
+      myf4f.WriteFlvDataFromF4file((char*)filename.c_str(),"mycf4f.flv");
+
+    }
+  
   return 0;
 
 }
