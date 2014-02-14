@@ -5,7 +5,7 @@
 
 
 
-
+static const char cd64[]="|$$$}rstuvwxyz{$$$$$$$>?@ABCDEFGHIJKLMNOPQRSTUVW$$$$$$XYZ[\\]^_`abcdefghijklmnopq";
 
 bool IsBigEndian()
 {
@@ -32,6 +32,48 @@ void CvtEndian(void* data,int size)
 
 }
 
+static void decodeblock( unsigned char in[4], unsigned char out[3] )
+{
+  out[ 0 ] = (unsigned char ) (in[0] << 2 | in[1] >> 4);
+  out[ 1 ] = (unsigned char ) (in[1] << 4 | in[2] >> 2);
+  out[ 2 ] = (unsigned char ) (((in[2] << 6) & 0xc0) | in[3]);
+}
+
+void base64_decode(const unsigned char* pIn, int len, std::string& OUT out)
+{
+  int m = len / 4;
+  int i, j;
+  unsigned char in[4];
+  unsigned char v;
+  unsigned char* pOut =(unsigned char*) new char[4*m];
+  
+  for(i=0; i<m; ++i) {
+    for (j=0; j<4; ++j) {
+      v = pIn[i*4+j];
+      v = (unsigned char) ((v < 43 || v > 122) ? 0 : cd64[ v - 43 ]);
+      if( v ) {
+	v = (unsigned char) ((v == '$') ? 0 : v - 61);
+      }
+      if( v ) {
+	in[ j ] = (unsigned char) (v - 1);
+      }
+    }
+    decodeblock(in, pOut+3*i);
+  }
+  out.clear();
+  out.append((char*)pOut, 3*m);
+}
+
+int callback_writefunction(void* buff,size_t size,size_t count,void* userdata)
+{
+  size_t datalen=size*count;
+  std::fstream f4mfile((char*)userdata,std::fstream::app|std::fstream::out);
+  std::cout<<"writing file..."<<std::endl;
+  f4mfile.write((char*)buff,datalen);
+  f4mfile.close();
+  return datalen;
+}
+
 CF4FPaser::CF4FPaser()
 {
   prev_video_timestamp=0;
@@ -49,6 +91,90 @@ CF4FPaser::~CF4FPaser()
   
 }
 
+
+void CF4FPaser::DownLoadFile(char* fileurl,char filename)
+{
+  CURL* hd_curl=curl_easy_init();
+  curl_easy_setopt(hd_curl,CURLOPT_URL,f4murl);
+  curl_easy_setopt(hd_curl,CURLOPT_WRITEFUNCTION,&callback_writefunction);
+  curl_easy_setopt(hd_curl,CURLOPT_WRITEDATA,filename);
+  CURLcode ret_code=curl_easy_perform(hd_curl);
+  if(ret_code!=CURLE_OK)
+    std::cout<<"cannot download the file"<<std::endl;
+  curl_easy_cleanup(hd_curl);
+}
+
+
+void CF4FPaser::GetF4MInfoFromFile(char* f4mfile,F4MINFO* pF4mInfo)
+{
+  
+  std::fstream in_file(f4mfile,std::fstream::in|std::fstream::binary);
+  in_file.seekg(0,std::fstream::end);
+  length+=in_file.tellg();
+  in_file.seekg(0,std::fstream::beg);
+  char* buffer=new char[length];
+  in_file.read(buffer,length);
+  std::string f4m_str(buffer);
+  std::size_t key_begin,key_end;
+  key_begin=f4m_str.find("<streamType>")+12;
+  key_end=f4m_str.find("</streamType>");
+  if(f4m_str.substr(key_begin,key_end-key_begin)=="live")
+    pF4mInfo->livestream=true;
+  else
+    pF4mInfo->livestream=false;
+  
+  uint8_t count=0;
+  while(1)
+    {
+      key_begin=f4m_str.find("<meida");
+      key_end=f4m_str.find("</media>",key_begin);
+      if(key_begin==std::string::npos || key_end==std::string::npos)
+	break;
+      count++;
+      key_begin=key_end+8;
+    }
+  quality=new char*[count];
+  mediaurl=new char*[count];
+  bootstrap=new char*[count];
+  std::size_t quality_begin,quality_end,mediaurl_begin,mediaurl_end,bootstrap_begin,bootstrap_end;
+  uint8_t tmp=0;
+  while(tmp<count)
+    {
+      quality_begin=f4m_str.find("<bitrate=\"")+10;
+      quality_end=f4m_str.find("\"",quality_begin);
+      quality[tmp]=new char[quality_end-quality_begin+1];
+      memset(quality[tmp],0,quality_end-quality_begin+1);
+      memcpy(quality[tmp],f4m_str.substr(quality_begin,quality_end-quality_begin).c_str(),quality_end-quality_begin);
+      quality_begin=quality_end;
+
+      mediaurl_begin=f4m_str.find("<media");
+      mediaurl_end=f4m_str.find("</media>",mediaurl_begin);
+      mediaurl_begin=f4m_str.find("url=\"")+5;
+      mediaurl_end=f4m_str.find("\"",mediaurl_begin);
+      mediaurl[tmp]=new char[mediaurl_end-mediaurl_begin+1];
+      memset(mediaurl[tmp],0,mediaurl_end-mediaurl_begin+1);
+      memcpy(mediaurl[tmp],f4m_str.substr(mediaurl_begin,mediaurl_end-mediaurl_begin).c_str(),mediaurl_end-mediaurl_begin);
+      mediaurl_begin=mediaurl_end;
+
+      bootstrap_begin=f4m_str.find("<bootstrapInfo");
+      bootstrap_end=f4m_str.find("</bootstrapInfo>",bootstrap_begin);
+      if(f4m_str.find("url=",bootstrap_begin)==std::string::npos || f4m_str.find("url=",bootstrap_begin)>bootstrap_end)
+	{
+	  bootstrap_begin=f4m_str.find(">",bootstrap_begin)+1;
+	  pF4mInfo->include_bootstrap=true;
+	}
+      else
+	{
+	  
+	  bootstrap_begin=f4m_str.find("url=\"",bootstrap_begin)+5;
+	  bootstrap_end=f4m_str.find("\"",bootstrap_begin);
+	}
+      bootstrap[tmp]=new char[bootstrap_end-bootstrap_begin+1];
+      memset(bootstrap[tmp],0,bootstrap_end-bootstrap_begin+1);
+      memcpy(bootstrap[tmp],f4m_str.substr(bootstrap_begin,bootstrap_end-bootstrap_begin).c_str(),bootstrap_end-bootstrap_begin);
+      bootstrap_begin=bootstrap_end;
+    }
+}
 
 void CF4FPaser::CreateFlvFile(char* flvname)
 {
@@ -247,11 +373,8 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 }
 int main()
 {
-  if(IsBigEndian())
-    printf("hello bigendian\n");
-  else
-    printf("hello littlendian\n");
   CF4FPaser myf4f;
+  /*
   F4FTagInfo myinfo;
   myf4f.CreateFlvFile("mycf4f.flv");
   std::string filename;
@@ -265,6 +388,18 @@ int main()
 
     }
   
+  std::cout<<"input the f4m's url"<<std::endl;
+  std::string f4murl;
+  std::cin>>f4murl;
+  std::cout<<"url is "<<(char*)f4murl.c_str()<<std::endl;
+  myf4f.DownLoadF4fFromF4m((char*)f4murl.c_str());
+  */
+  std::string mydec;
+  base64_decode((const unsigned char*)"AAAAi2Fic3QAAAAAAAAAAQAAAAPoAAAAAAABce8AAAAAAAAAAAAAAAAAAQAAABlhc3J0AAAAAAAAAAABAAAAAQAAAA8BAAAARmFmcnQAAAAAAAAD6AAAAAADAAAAAQAAAAAAAAAAAAAXcAAAAA\
+8AAAAAAAFIIAAAKc8AAAAAAAAAAAAAAAAAAAAAAA==",190,mydec);
+  std::fstream myfs("./mydec",std::fstream::out);
+  myfs.write((char*)mydec.c_str(),mydec.size());
+  myfs.close();
   return 0;
 
 }
