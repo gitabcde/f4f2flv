@@ -32,10 +32,10 @@ typedef struct tag_F4MINFO
   char** bootstrap;
   uint32_t Seg_Upper;
   uint32_t Seg_Lowwer;
-  uint32_t Frag_Upper;
-  uint32_t Frag_Lowwer;
+  uint32_t FragCount_Common;
+  uint32_t FragCount_Last;
   
-}F4MINFO
+}F4MINFO;
 
 char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
 
@@ -45,19 +45,22 @@ class CF4FPaser
  public:
   CF4FPaser();
   ~CF4FPaser();
-  void DownLoadFile(char* fileurl);
-  void GetF4MInfoFromFile(char* f4mfile,F4MINFO* pF4mInfo);
+  void SetF4m(char* f4murl);
+  void GetF4MInfo(F4MINFO* pF4mInfo);
+  void GetVideoSegUrl(std::string* videourl,F4MINFO* pF4mInfo,int qualitylvl);
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file,char* flvname);
+  void print();
  private:
-  int GetTagInfoFromF4file(char* f4file,char* tagname,F4FTagInfo* taginfo);
+  int GetTagInfoFromFile(char* f4file,char* tagname,F4FTagInfo* taginfo);
   void AjustFlvTimeStamp(char* flvname);
   bool IsLiveVideo(char* f4mfile);
-  //  void GetVideoSegFragRange(
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
   uint64_t lastpos;
   std::vector<std::string>  downloader_f4files;
   std::string f4m_baseurl;
+  std::string f4m_str,bootstrap_str;
+  uint32_t current_frag,current_seg;
 };
 
