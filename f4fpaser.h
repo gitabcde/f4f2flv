@@ -46,7 +46,7 @@ class CF4FPaser
   ~CF4FPaser();
   void SetF4m(char* f4murl);
   void GetF4MInfo(F4MINFO* pF4mInfo);
-  /*  void GetVideoSegUrl(std::string& videourl,F4MINFO* pF4mInfo,int qualitylvl);*/
+  void GetVideoSegUrl(std::string& videourl,F4MINFO* pF4mInfo,int qualitylvl);
   void WriteToStringFromUrl(std::string url,std::string& str); 
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file,char* flvname);
@@ -54,7 +54,6 @@ class CF4FPaser
  private:
   int GetTagInfoFromFile(char* f4file,char* tagname,F4FTagInfo* taginfo);
   void AjustFlvTimeStamp(char* flvname);
-  bool IsLiveVideo(char* f4mfile);
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
   uint64_t lastpos;
@@ -64,4 +63,6 @@ class CF4FPaser
   uint32_t current_frag,current_seg;
   uint32_t qualitylvl;
 };
+
+
 

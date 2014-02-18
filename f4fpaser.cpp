@@ -208,7 +208,7 @@ void CF4FPaser::GetF4MInfo(F4MINFO* pF4mInfo)
 	}
       uint32_t segcount=0;
 
-      std::cout<<"now pos is"<<pos<<std::endl;
+      std::cout<<"now pos is "<<pos<<std::endl;
       segcount=(*(uint32_t*)(pF4mInfo->bootstrap[tmp].c_str()+pos));
       CvtEndian(&segcount,4);
       std::cout<<"segcount is "<<segcount<<std::endl;
@@ -220,14 +220,37 @@ void CF4FPaser::GetF4MInfo(F4MINFO* pF4mInfo)
       pos+=(segcount-1)*8;
       pF4mInfo->last_seg[tmp]=(*(uint32_t*)(pF4mInfo->bootstrap[tmp].c_str()+pos));
       CvtEndian(&pF4mInfo->last_seg[tmp],4);
-      pos+=4;
       pF4mInfo->last_seg_fragcount[tmp]=(*(uint32_t*)(pF4mInfo->bootstrap[tmp].c_str()+pos+4));
       CvtEndian(&pF4mInfo->last_seg_fragcount[tmp],4);
       tmp++;
     }
 }
 
+void CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qualitylvl)
+{
+  if(pF4mInfo->livestream)
+    {
+      
 
+    }
+  if(current_seg==0 && current_frag==0)
+    {
+      current_seg=pF4mInfo->;
+    }
+  videourl="";
+  std::string tmp_baseurl;
+  char* tmp_mediaurl=pF4mInfo->mediaurl[qualitylvl];
+  while(strstr(tmp_mediaurl,"../")!=NULL)
+    {
+      tmp_mediaurl=strstr(tmp_mediaurl,"../")+2;
+      tmp_baseurl=f4m_baseurl.substr(0,f4m_baseurl.rfind("/"));
+    }
+  videourl.append(tmp_baseurl);
+  videourl.append(tmp_mediaurl);
+  videourl<<"Seg"<<
+  std::cout<<"videourl is "<<videourl<<std::endl;
+  
+}
 
 
 void CF4FPaser::WriteToStringFromUrl(std::string url,std::string& str)
