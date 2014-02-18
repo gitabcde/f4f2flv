@@ -29,12 +29,11 @@ typedef struct tag_F4MINFO
   char** quality;
   char** mediaurl;
   bool include_bootstrap;
-  char** bootstrap;
-  uint32_t Seg_Upper;
-  uint32_t Seg_Lowwer;
-  uint32_t FragCount_Common;
-  uint32_t FragCount_Last;
-  
+  std::string* bootstrap;
+  uint32_t* first_seg;
+  uint32_t* last_seg;
+  uint32_t* first_seg_fragcount;
+  uint32_t* last_seg_fragcount;
 }F4MINFO;
 
 char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
@@ -47,7 +46,8 @@ class CF4FPaser
   ~CF4FPaser();
   void SetF4m(char* f4murl);
   void GetF4MInfo(F4MINFO* pF4mInfo);
-  void GetVideoSegUrl(std::string* videourl,F4MINFO* pF4mInfo,int qualitylvl);
+  /*  void GetVideoSegUrl(std::string& videourl,F4MINFO* pF4mInfo,int qualitylvl);*/
+  void WriteToStringFromUrl(std::string url,std::string& str); 
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file,char* flvname);
   void print();
@@ -60,7 +60,8 @@ class CF4FPaser
   uint64_t lastpos;
   std::vector<std::string>  downloader_f4files;
   std::string f4m_baseurl;
-  std::string f4m_str,bootstrap_str;
+  std::string f4m_str;
   uint32_t current_frag,current_seg;
+  uint32_t qualitylvl;
 };
 
