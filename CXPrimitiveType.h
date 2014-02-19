@@ -4,7 +4,7 @@
 
 
 
-#ifdef unix
+#if (defined(unix) || defined(__APPLE__))
 #include <sys/types.h>
 typedef __int8_t CX_INT8;
 typedef __uint8_t CX_UINT8;

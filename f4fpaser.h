@@ -46,17 +46,20 @@ class CF4FPaser
   ~CF4FPaser();
   void SetF4m(char* f4murl);
   void GetF4MInfo(F4MINFO* pF4mInfo);
-  void GetVideoSegUrl(std::string& videourl,F4MINFO* pF4mInfo,int qualitylvl);
+  int GetVideoSegUrl(std::string& videourl,F4MINFO* pF4mInfo,int qualitylvl);
   void WriteToStringFromUrl(std::string url,std::string& str); 
+  void GetBootstrap(F4MINFO* pF4mInfo,int qualitylvl);
+  void GetSegFragInfo(F4MINFO* pF4mInfo,int qualitylvl);
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file,char* flvname);
   void print();
- private:
+  // private:
   int GetTagInfoFromFile(char* f4file,char* tagname,F4FTagInfo* taginfo);
   void AjustFlvTimeStamp(char* flvname);
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
   uint64_t lastpos;
+  bool script_exist;
   std::vector<std::string>  downloader_f4files;
   std::string f4m_baseurl;
   std::string f4m_str;
