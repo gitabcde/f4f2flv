@@ -235,7 +235,7 @@ int CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qual
     }
 
   videourl="";
-  std::string tmp_baseurl;
+  std::string tmp_baseurl=f4m_baseurl;
   char* tmp_mediaurl=pF4mInfo->mediaurl[qualitylvl];
   if(strstr(tmp_mediaurl,"../")!=NULL)
     tmp_baseurl=f4m_baseurl.substr(0,f4m_baseurl.rfind("/"));
@@ -251,6 +251,8 @@ int CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qual
   memset(buffer,0,100);
   sprintf(buffer,"Seg%d-Frag%d",current_seg,current_frag);
   videourl.append(buffer);
+  std::cout<<"videourl in GetVideoSegUrl is "<<videourl<<std::endl;
+
   return 0;
 }
 
@@ -474,7 +476,6 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	    prev_audio_timestamp=timestamp;
 	  if(timestamp-prev_audio_timestamp>2000)
 	    {
-#pragma message("output the message that some tag is lost")
 	      std::cout<<"audio is not continous"<<std::endl;
 	      prev_audio_timestamp=timestamp-audio_timestamp_offset;
 	    }
@@ -535,7 +536,7 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	      flvfile.seekp(lastpos);
 	      flvfile.write(((char*)&timestamp)+1,3);
 	      flvfile.write((char*)&timestamp,1);
-	      //script_exist=true;
+	      script_exist=true;
 	    }
 	  break;
 	default:
@@ -583,8 +584,8 @@ int main()
 
 
 #ifdef F4F_DOWNLOAD
-  myf4f.SetF4m("http://cdnl3.1internet.tv-live.hds.adaptive.level3.net/hds-live11/livepkgr/_definst_/1tv-hdbk.f4m?e=1392690176");
-  //myf4f.SetF4m("http://hdflashmegatv-f.akamaihd.net/z/,content/2012/07/27/k386195_%7BD5743677-B7DD-46C6-927A-5630BD688199%7D_lo.mp4,.csmil/manifest.f4m?hdcore=2.11.3&g=LUICOABJOFQO");
+  //myf4f.SetF4m("http://cdnl3.1internet.tv-live.hds.adaptive.level3.net/hds-live11/livepkgr/_definst_/1tv-hdbk.f4m?e=1392690176");
+  myf4f.SetF4m("http://hdflashmegatv-f.akamaihd.net/z/,content/2012/07/27/k386195_%7BD5743677-B7DD-46C6-927A-5630BD688199%7D_lo.mp4,.csmil/manifest.f4m?hdcore=2.11.3&g=LUICOABJOFQO");
   
   F4MINFO myf4minfo;
   myf4f.GetF4MInfo(&myf4minfo);
@@ -625,8 +626,8 @@ int main()
 
 #ifdef F4F_TEST
   myf4f.CreateFlvFile("mytestvideo.flv");
-  myf4f.WriteFlvDataFromF4file("video3.f4f","mytestvideo.flv");
-  myf4f.WriteFlvDataFromF4file("video5.f4f","mytestvideo.flv");
+  myf4f.WriteFlvDataFromF4file("video0.f4f","mytestvideo.flv");
+  myf4f.WriteFlvDataFromF4file("video1.f4f","mytestvideo.flv");
 
 #endif
 
