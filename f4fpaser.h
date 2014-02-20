@@ -15,7 +15,7 @@ typedef struct tag_F4FTagInfo
     uint64_t size_64;
   }size;
   char name[4];
-  int pos_beg;
+  uint64_t pos_beg;
 
 }F4FTagInfo;
 
@@ -34,6 +34,7 @@ typedef struct tag_F4MINFO
   uint32_t* last_seg;
   uint32_t* first_seg_fragcount;
   uint32_t* last_seg_fragcount;
+  uint32_t frag_duration;
 }F4MINFO;
 
 char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
@@ -59,8 +60,8 @@ class CF4FPaser
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
   uint64_t lastpos;
-  bool script_exist;
-  std::vector<std::string>  downloader_f4files;
+  bool prev_type_video;
+  CURL* hd_curl;
   std::string f4m_baseurl;
   std::string f4m_str;
   uint32_t current_frag,current_seg;
