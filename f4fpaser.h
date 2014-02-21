@@ -34,7 +34,8 @@ typedef struct tag_F4MINFO
   uint32_t* last_seg;
   uint32_t* first_seg_fragcount;
   uint32_t* last_seg_fragcount;
-  uint32_t frag_duration;
+  uint32_t* first_frag_duration;
+  uint32_t* last_frag_duration;
 }F4MINFO;
 
 char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
@@ -59,6 +60,7 @@ class CF4FPaser
   void AjustFlvTimeStamp(char* flvname);
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
+  bool have_set_zero_audio,have_set_zero_video;
   uint64_t lastpos;
   bool prev_type_video;
   CURL* hd_curl;

@@ -99,6 +99,8 @@ CF4FPaser::CF4FPaser()
   current_seg=0;  
   hd_curl=curl_easy_init();
   prev_type_video=true;
+  have_set_zero_audio=false;
+  have_set_zero_video=false;
 }
 
 CF4FPaser::~CF4FPaser()
@@ -142,6 +144,8 @@ void CF4FPaser::GetF4MInfo(F4MINFO* pF4mInfo)
   pF4mInfo->last_seg=new uint32_t[count];
   pF4mInfo->first_seg_fragcount=new uint32_t[count];
   pF4mInfo->last_seg_fragcount=new uint32_t[count];
+  pF4mInfo->first_frag_duration=new uint32_t[count];
+  pF4mInfo->last_frag_duration=new uint32_t[count];
   std::size_t quality_begin=0,quality_end=0,mediaurl_begin=0,mediaurl_end=0,bootstrap_begin=0,bootstrap_end=0;
   uint8_t tmp=0;
   while(tmp<count)
@@ -266,7 +270,8 @@ void CF4FPaser::GetSegFragInfo(F4MINFO* pF4mInfo,int qualitylvl)
     std::cout<<"recordedstream in GetSegFragInfo"<<std::endl;
   
   tag_length=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pF4mInfo->bootstrap[qualitylvl].find("asrt")-4));
-  CvtEndian(&tag_length,4);
+  if(!IsBigEndian())
+    CvtEndian(&tag_length,4);
   std::cout<<"tag_length is "<<tag_length<<std::endl;
   int pos=0;
   if(tag_length==1)
@@ -285,21 +290,27 @@ void CF4FPaser::GetSegFragInfo(F4MINFO* pF4mInfo,int qualitylvl)
   
   std::cout<<"now pos is "<<pos<<std::endl;
   segcount=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos));
-  CvtEndian(&segcount,4);
+  if(!IsBigEndian())
+    CvtEndian(&segcount,4);
   std::cout<<"segcount is "<<segcount<<std::endl;
   pos+=4;
   pF4mInfo->first_seg[qualitylvl]=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos));
-  CvtEndian(&pF4mInfo->first_seg[qualitylvl],4);
+  if(!IsBigEndian())
+    CvtEndian(&pF4mInfo->first_seg[qualitylvl],4);
   pF4mInfo->first_seg_fragcount[qualitylvl]=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos+4));
-  CvtEndian(&pF4mInfo->first_seg_fragcount[qualitylvl],4);
+  if(!IsBigEndian())
+    CvtEndian(&pF4mInfo->first_seg_fragcount[qualitylvl],4);
   pos+=(segcount-1)*8;
   pF4mInfo->last_seg[qualitylvl]=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos));
-  CvtEndian(&pF4mInfo->last_seg[qualitylvl],4);
+  if(!IsBigEndian())
+    CvtEndian(&pF4mInfo->last_seg[qualitylvl],4);
   pF4mInfo->last_seg_fragcount[qualitylvl]=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos+4));
-  CvtEndian(&pF4mInfo->last_seg_fragcount[qualitylvl],4);
+  if(!IsBigEndian())
+    CvtEndian(&pF4mInfo->last_seg_fragcount[qualitylvl],4);
 
   tag_length=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pF4mInfo->bootstrap[qualitylvl].find("afrt")-4));
-  CvtEndian(&tag_length,4);
+  if(!IsBigEndian())
+    CvtEndian(&tag_length,4);
   std::cout<<"tag_length is "<<tag_length<<std::endl;
   if(tag_length==1)
     pos=pF4mInfo->bootstrap[qualitylvl].find("asrt")+12;
@@ -312,7 +323,14 @@ void CF4FPaser::GetSegFragInfo(F4MINFO* pF4mInfo,int qualitylvl)
       pos=pF4mInfo->bootstrap[qualitylvl].find("\0",pos)+1;
     }
   uint32_t fragEntryCount;
- 
+  fragEntryCount=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos));
+  if(!IsBigEndian())
+    CvtEndian(&fragEntryCount,4);
+  pos+=4;
+  pF4mInfo->first_frag_duration[qualitylvl]=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos));
+  if(!IsBigEndian())
+    CvtEndian(&pF4mInfo->first_frag_duration[qualitylvl],4);
+  
 }
 
 
@@ -371,22 +389,20 @@ void CF4FPaser::CreateFlvFile(char* flvname)
 
 void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
 {
-
-  std::ifstream f4f_file(f4file,std::ifstream::in|std::ifstream::binary);
-  std::fstream flvfile(flvname,std::fstream::out|std::fstream::in|std::fstream::binary);
   F4FTagInfo myinfo;
   myinfo.largesize=false;
   myinfo.size.size_32=0;
   myinfo.size.size_64=0;
   memset(myinfo.name,0,4);
   myinfo.pos_beg=0;
-  flvfile.seekp(0,std::fstream::end);
   while(GetTagInfoFromFile(f4file,"mdat",&myinfo)==0)
     {
+      std::ifstream f4f_file(f4file,std::ifstream::in|std::ifstream::binary);
+      std::fstream flvfile(flvname,std::fstream::out|std::fstream::in|std::fstream::binary);
+      flvfile.seekp(0,std::fstream::end);
+      std::cout<<"pos_beg is "<<myinfo.pos_beg<<std::endl;      
       std::cout<<"begin to WriteFlvDataFromF4file"<<std::endl;
       lastpos=flvfile.tellp();
-      if(lastpos==-1)
-	return;
       //      std::cout<<"lastpos in WriteFlvDataFromF4file is "<<lastpos<<std::endl;
       char buffer[F4F_BUFFER_SIZE];
       int count,left;
@@ -399,6 +415,7 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
 	  std::cout<<"largesize is true,it's  "<<myinfo.size.size_64<<std::endl;
 	  count=(myinfo.size.size_64-16)/F4F_BUFFER_SIZE;
 	  left=(myinfo.size.size_64-16)%F4F_BUFFER_SIZE;
+	  myinfo.pos_beg+=myinfo.size.size_64;
 	}
       else
 	{
@@ -406,8 +423,9 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
 	  f4f_file.seekg(myinfo.pos_beg+8);
 	  count=(myinfo.size.size_32-8)/F4F_BUFFER_SIZE;
 	  left=(myinfo.size.size_32-8)/F4F_BUFFER_SIZE;
+	  myinfo.pos_beg+=myinfo.size.size_32;
 	}
-      
+
       for(int n=0;n<count;n++)
 	{
 	  f4f_file.read(buffer,F4F_BUFFER_SIZE);
@@ -420,6 +438,9 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
       std::cout<<"prepare to ajusting timestamp"<<std::endl;
       AjustFlvTimeStamp(flvname);
     }
+
+  std::cout<<"No valid content left in f4file"<<std::endl;
+   
 }
 
 int CF4FPaser::GetTagInfoFromFile(char* filepath,char* tagname,F4FTagInfo* taginfo)
@@ -428,17 +449,31 @@ int CF4FPaser::GetTagInfoFromFile(char* filepath,char* tagname,F4FTagInfo* tagin
   int ret=0;
   std::ifstream fs(filepath,std::ifstream::in|std::ifstream::binary);
   uint32_t src_tagname,dst_tagname;
-  if(taginfo->largesize)
-    fs.seekg(taginfo->size.size_64+taginfo->pos_beg);
-  else
-    fs.seekg(taginfo->size.size_32+taginfo->pos_beg);
-  while(taginfo->pos_beg!=(size_t)-1)
+  fs.seekg(taginfo->pos_beg);
+  std::cout<<"taginfo->pos_beg is "<<taginfo->pos_beg<<std::endl;
+  while(!fs.eof())
     {
-      taginfo->pos_beg=fs.tellg();
       fs.read((char*)&taginfo->size.size_32,4);
       if(!IsBigEndian())
 	CvtEndian(&taginfo->size.size_32,4);
+      if(taginfo->size.size_32==1)
+	{
+	  taginfo->largesize=true;
+	  fs.read((char*)&taginfo->size.size_64,8);
+	  if(!IsBigEndian())
+	    CvtEndian(&taginfo->size.size_64,8);
+     	}
+      else
+	{
+	  taginfo->largesize=false;
+	}
       fs.read((char*)taginfo->name,4);
+      std::cout<<"tagname is "<<taginfo->name<<std::endl;
+      if((*((uint32_t*)taginfo->name))==(*((uint32_t*)tagname)))
+	{
+	  fs.close();
+	  return 0;
+	}
       if(taginfo->size.size_32==1)
 	{
 	  taginfo->largesize=true;
@@ -446,17 +481,15 @@ int CF4FPaser::GetTagInfoFromFile(char* filepath,char* tagname,F4FTagInfo* tagin
 	  if(!IsBigEndian())
 	    CvtEndian(&taginfo->size.size_64,8);
 	  fs.seekg(taginfo->pos_beg+taginfo->size.size_64);
+	  taginfo->pos_beg+=taginfo->size.size_64;
 	}
       else
 	{
 	  taginfo->largesize=false;
 	  fs.seekg(taginfo->pos_beg+taginfo->size.size_32);
+	  taginfo->pos_beg+=taginfo->size.size_32;
 	}
-      if((*((uint32_t*)taginfo->name))==(*((uint32_t*)tagname)))
-	{
-	  fs.close();
-	  return 0;
-	}
+      
     }
   fs.close();
   return -1;
@@ -499,18 +532,26 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	case 0x08:
 	  std::cout<<"audio tag"<<std::endl;
 	  if(prev_audio_timestamp==0)
-	    prev_audio_timestamp=timestamp;
-	  
+	    {
+	      if(!have_set_zero_audio)
+		{
+		  prev_audio_timestamp=timestamp;
+		  have_set_zero_audio=true;
+		}
+	    }
+
 	  if(timestamp-prev_audio_timestamp>1000)
 	    {
 	      std::cout<<"audio is not continous"<<std::endl;
 	      std::cout<<"timestamp is "<<timestamp<<" ,prev_audio_timestamp is "<<prev_audio_timestamp<<std::endl;
+	      std::cout<<"pos is "<<lastpos<<std::endl;
 	      prev_audio_timestamp=timestamp-40;
 	    }
 	  else
 	    {
 	      std::cout<<"normal timestamp in audio"<<std::endl;
 	      std::cout<<"timestamp is "<<timestamp<<" ,prev_audio_timestamp is "<<prev_audio_timestamp<<std::endl;
+	      std::cout<<"pos is "<<lastpos<<std::endl;
 	      
 	    }
 	  //	  audio_timestamp_offset=(video_timestamp_offset>audio_timestamp_offset?video_timestamp_offset:audio_timestamp_offset);
@@ -530,17 +571,25 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	case 0x09:
 	  std::cout<<"video tag"<<std::endl;
 	  if(prev_video_timestamp==0)
-	    prev_video_timestamp=timestamp;
+	    {
+	      if(!have_set_zero_video)
+		{
+		  have_set_zero_video=true;
+		  prev_video_timestamp=timestamp;
+		}
+	    }
 	  if(timestamp-prev_video_timestamp>1000)
 	    {
 	      std::cout<<"video is not continous"<<std::endl;
 	      std::cout<<"timestamp is "<<timestamp<<" ,prev_video_timestamp is "<<prev_video_timestamp<<std::endl;
+	      std::cout<<"pos is "<<lastpos<<std::endl;
 	      prev_video_timestamp=timestamp-40;
 	    }
 	  else
 	    {
 	      std::cout<<"normal timestamp in video"<<std::endl;
 	      std::cout<<"timestamp is "<<timestamp<<" ,prev_video_timestamp is "<<prev_video_timestamp<<std::endl;
+	      std::cout<<"pos is "<<lastpos<<std::endl;
 	    }
 	  
 	  //	  video_timestamp_offset=(video_timestamp_offset>audio_timestamp_offset?video_timestamp_offset:audio_timestamp_offset);
@@ -562,9 +611,19 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	  if(prev_script_timestamp==0)
 	    prev_script_timestamp=timestamp;
 	  if(timestamp-prev_script_timestamp>1000)
-	    prev_script_timestamp=timestamp-40;
+	    {
+	      std::cout<<"script's timestamp is not continous"<<std::endl;
+	      std::cout<<"timestamp is "<<timestamp<<" ,prev_script_timestamp is "<<prev_script_timestamp<<std::endl;
+	      std::cout<<"pos is "<<lastpos<<std::endl;
+	      prev_script_timestamp=timestamp-40;
+
+	    }
 	  else
-	    prev_script_timestamp=timestamp;
+	    {
+	      std::cout<<"normal script timestamp"<<std::endl;
+	      std::cout<<"pos is "<<lastpos<<std::endl;
+	      prev_script_timestamp=timestamp;
+	    }
 	  script_timestamp_offset+=timestamp-prev_script_timestamp;
 	  timestamp=script_timestamp_offset;
 	  std::cout<<"script's timestamp is "<<timestamp<<std::endl;
@@ -605,6 +664,7 @@ void CF4FPaser::print()
 }
 int main()
 {
+  std::cout<<std::hex;
   CF4FPaser myf4f;
 #ifdef F4F_MAKER
   int first=0,last=0;
