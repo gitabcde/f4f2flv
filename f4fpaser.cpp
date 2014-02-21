@@ -389,6 +389,7 @@ void CF4FPaser::CreateFlvFile(char* flvname)
 
 void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
 {
+  std::cout<<"begin to WriteFlvDataFromF4file"<<std::endl;
   F4FTagInfo myinfo;
   myinfo.largesize=false;
   myinfo.size.size_32=0;
@@ -397,22 +398,22 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
   myinfo.pos_beg=0;
   while(GetTagInfoFromFile(f4file,"mdat",&myinfo)==0)
     {
+     
+      std::cout<<"begin loop"<<std::endl;
       std::ifstream f4f_file(f4file,std::ifstream::in|std::ifstream::binary);
       std::fstream flvfile(flvname,std::fstream::out|std::fstream::in|std::fstream::binary);
       flvfile.seekp(0,std::fstream::end);
-      std::cout<<"pos_beg is "<<myinfo.pos_beg<<std::endl;      
-      std::cout<<"begin to WriteFlvDataFromF4file"<<std::endl;
       lastpos=flvfile.tellp();
-      //      std::cout<<"lastpos in WriteFlvDataFromF4file is "<<lastpos<<std::endl;
       char buffer[F4F_BUFFER_SIZE];
       int count,left;
       std::cout<<"filename is "<<f4file<<std::endl;
       std::cout<<"tagname is "<<std::string(myinfo.name)<<" size is "<<myinfo.size.size_64<<std::endl;
-      //     std::cout<<"pos_beg is "<<myinfo.pos_beg<<std::endl;
+
       if(myinfo.largesize)
 	{
 	  f4f_file.seekg(myinfo.pos_beg+16);
-	  std::cout<<"largesize is true,it's  "<<myinfo.size.size_64<<std::endl;
+	  std::cout<<"largesize is true,it's  "<<myinfo.size.size_64<<std::
+	    endl;
 	  count=(myinfo.size.size_64-16)/F4F_BUFFER_SIZE;
 	  left=(myinfo.size.size_64-16)%F4F_BUFFER_SIZE;
 	  myinfo.pos_beg+=myinfo.size.size_64;
@@ -435,7 +436,11 @@ void CF4FPaser::WriteFlvDataFromF4file(char* f4file,char* flvname)
       flvfile.write(buffer,left);
       f4f_file.close();
       flvfile.close();
+      std::cout<<"current f4file is "<<f4file<<std::endl;
+      std::cout<<"current f4file's pos_beg is "<<myinfo.pos_beg<<std::endl;
+      std::cout<<"current f4ffile's data size is "<<myinfo.size.size_32<<std::endl;
       std::cout<<"prepare to ajusting timestamp"<<std::endl;
+      std::cout<<"before AjustTimeStamp ,lastpos is "<<lastpos<<std::endl;
       AjustFlvTimeStamp(flvname);
     }
 
@@ -448,11 +453,19 @@ int CF4FPaser::GetTagInfoFromFile(char* filepath,char* tagname,F4FTagInfo* tagin
   std::cout<<"begin GetTagInfoFromFile"<<std::endl;
   int ret=0;
   std::ifstream fs(filepath,std::ifstream::in|std::ifstream::binary);
+  uint64_t filelength=0;
+  fs.seekg(0,std::fstream::end);
+  filelength=fs.tellg();
+  //  std::cout<<"filelength is "<<filelength<<std::endl;
+  fs.seekg(0,std::fstream::beg);
   uint32_t src_tagname,dst_tagname;
   fs.seekg(taginfo->pos_beg);
   std::cout<<"taginfo->pos_beg is "<<taginfo->pos_beg<<std::endl;
-  while(!fs.eof())
+  while(fs.tellg()<filelength)
     {
+      //std::cout<<"in GetTagInfoFromFile's loop,fs.tellg() is  "<<fs.tellg()<<std::endl;
+      //std::string myteststr;
+      //std::cin>>myteststr;
       fs.read((char*)&taginfo->size.size_32,4);
       if(!IsBigEndian())
 	CvtEndian(&taginfo->size.size_32,4);
@@ -476,16 +489,11 @@ int CF4FPaser::GetTagInfoFromFile(char* filepath,char* tagname,F4FTagInfo* tagin
 	}
       if(taginfo->size.size_32==1)
 	{
-	  taginfo->largesize=true;
-	  fs.read((char*)&taginfo->size.size_64,8);
-	  if(!IsBigEndian())
-	    CvtEndian(&taginfo->size.size_64,8);
-	  fs.seekg(taginfo->pos_beg+taginfo->size.size_64);
+    	  fs.seekg(taginfo->pos_beg+taginfo->size.size_64);
 	  taginfo->pos_beg+=taginfo->size.size_64;
 	}
       else
 	{
-	  taginfo->largesize=false;
 	  fs.seekg(taginfo->pos_beg+taginfo->size.size_32);
 	  taginfo->pos_beg+=taginfo->size.size_32;
 	}
@@ -501,12 +509,14 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
   char tag_type;
   uint32_t length_tagdata=0;
   std::fstream flvfile(flvname,std::fstream::out|std::fstream::in|std::fstream::binary);
-  while(lastpos!=(size_t)-1)
+  flvfile.seekg(0,std::fstream::end);
+  uint64_t filelength=flvfile.tellg();
+  flvfile.seekp(lastpos+4);
+  flvfile.seekg(lastpos);
+  std::cout<<"flv's length is "<<filelength<<std::endl;
+  while(flvfile.tellg()<filelength)
     {
-      std::cout<<"AjustFlvTimeStamp"<<std::endl;
-      //std::cout<<"lastpos is "<<std::hex<<lastpos<<std::endl;
-      flvfile.seekg(lastpos);
-      flvfile.seekp(lastpos);
+     
       length_tagdata=0;
       flvfile.read(&tag_type,1);
       flvfile.read((char*)&length_tagdata,3);
@@ -517,8 +527,7 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	  length_tagdata=length_tagdata<<8;
 	  CvtEndian(&length_tagdata,4);
 	}
-      //if(length_tagdata==0)
-      //continue;
+  
       flvfile.read((char*)&timestamp,3);
       if(IsBigEndian())
 	timestamp=timestamp>>8;
@@ -527,8 +536,10 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
       flvfile.read((char*)&timestamp,1);
       if(!IsBigEndian())
 	CvtEndian(&timestamp,4);
+
       switch(tag_type)
 	{
+
 	case 0x08:
 	  std::cout<<"audio tag"<<std::endl;
 	  if(prev_audio_timestamp==0)
@@ -539,22 +550,29 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 		  have_set_zero_audio=true;
 		}
 	    }
-
-	  if(timestamp-prev_audio_timestamp>1000)
+	  if(timestamp<prev_audio_timestamp)
 	    {
-	      std::cout<<"audio is not continous"<<std::endl;
-	      std::cout<<"timestamp is "<<timestamp<<" ,prev_audio_timestamp is "<<prev_audio_timestamp<<std::endl;
-	      std::cout<<"pos is "<<lastpos<<std::endl;
-	      prev_audio_timestamp=timestamp-40;
+	      std::cout<<"delay audio tag"<<std::endl;
+	      timestamp=prev_audio_timestamp+8;
 	    }
 	  else
 	    {
-	      std::cout<<"normal timestamp in audio"<<std::endl;
-	      std::cout<<"timestamp is "<<timestamp<<" ,prev_audio_timestamp is "<<prev_audio_timestamp<<std::endl;
-	      std::cout<<"pos is "<<lastpos<<std::endl;
-	      
+	      if(timestamp-prev_audio_timestamp>1000)
+		{
+		  std::cout<<"some audio tags is lost"<<std::endl;
+		  std::cout<<"timestamp is "<<timestamp<<" ,prev_audio_timestamp is "<<prev_audio_timestamp<<std::endl;
+		  std::cout<<"pos is "<<lastpos<<std::endl;
+		  prev_audio_timestamp=timestamp-40;
+		}
+	      else
+		{
+		  std::cout<<"normal timestamp in audio"<<std::endl;
+		  std::cout<<"timestamp is "<<timestamp<<" ,prev_audio_timestamp is "<<prev_audio_timestamp<<std::endl;
+		  std::cout<<"pos is "<<lastpos<<std::endl;
+		  audio_timestamp_offset=(video_timestamp_offset>audio_timestamp_offset?audio_timestamp_offset:video_timestamp_offset);
+		  
+		}
 	    }
-	  //	  audio_timestamp_offset=(video_timestamp_offset>audio_timestamp_offset?video_timestamp_offset:audio_timestamp_offset);
 	  audio_timestamp_offset+=timestamp-prev_audio_timestamp;	  
 	  prev_audio_timestamp=timestamp;
 	  timestamp=audio_timestamp_offset;
@@ -562,8 +580,7 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	  std::cout<<"length is "<<length_tagdata<<std::endl;
 	  if(!IsBigEndian())
 	    CvtEndian(&timestamp,4);
-	  lastpos+=4;
-	  flvfile.seekp(lastpos);
+	  flvfile.seekp(lastpos+4);
 	  flvfile.write(((char*)&timestamp)+1,3);
 	  flvfile.write((char*)&timestamp,1);
 	  prev_type_video=false;
@@ -578,21 +595,28 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 		  prev_video_timestamp=timestamp;
 		}
 	    }
-	  if(timestamp-prev_video_timestamp>1000)
+	  if(timestamp<prev_video_timestamp)
 	    {
-	      std::cout<<"video is not continous"<<std::endl;
-	      std::cout<<"timestamp is "<<timestamp<<" ,prev_video_timestamp is "<<prev_video_timestamp<<std::endl;
-	      std::cout<<"pos is "<<lastpos<<std::endl;
-	      prev_video_timestamp=timestamp-40;
+	      std::cout<<"delay video tag"<<std::endl;
+	      timestamp=prev_video_timestamp+8;
 	    }
 	  else
 	    {
-	      std::cout<<"normal timestamp in video"<<std::endl;
-	      std::cout<<"timestamp is "<<timestamp<<" ,prev_video_timestamp is "<<prev_video_timestamp<<std::endl;
-	      std::cout<<"pos is "<<lastpos<<std::endl;
+	      if(timestamp-prev_video_timestamp>1000)
+		{
+		  std::cout<<"video is not continous"<<std::endl;
+		  std::cout<<"timestamp is "<<timestamp<<" ,prev_video_timestamp is "<<prev_video_timestamp<<std::endl;
+		  std::cout<<"pos is "<<lastpos<<std::endl;
+		  prev_video_timestamp=timestamp-40;
+		}
+	      else
+		{
+		  std::cout<<"normal timestamp in video"<<std::endl;
+		  std::cout<<"timestamp is "<<timestamp<<" ,prev_video_timestamp is "<<prev_video_timestamp<<std::endl;
+		  std::cout<<"pos is "<<lastpos<<std::endl;
+		  video_timestamp_offset=(video_timestamp_offset>audio_timestamp_offset?video_timestamp_offset:audio_timestamp_offset);
+		}
 	    }
-	  
-	  //	  video_timestamp_offset=(video_timestamp_offset>audio_timestamp_offset?video_timestamp_offset:audio_timestamp_offset);
 	  video_timestamp_offset+=timestamp-prev_video_timestamp;
 	  prev_video_timestamp=timestamp;
 	  timestamp=video_timestamp_offset;
@@ -600,61 +624,69 @@ void CF4FPaser::AjustFlvTimeStamp(char* flvname)
 	  std::cout<<std::hex<<"length is "<<length_tagdata<<std::endl;
 	  if(!IsBigEndian())
 	    CvtEndian(&timestamp,4);
-	  lastpos+=4;
-	  flvfile.seekp(lastpos);
-	  flvfile.write(((char*)&timestamp)+1,3);
+	  flvfile.seekp(lastpos+4);
+     	  flvfile.write(((char*)&timestamp)+1,3);
 	  flvfile.write((char*)&timestamp,1);
 	  prev_type_video=true;
 	  break;
 	case 0x12:
 	  std::cout<<"script tag"<<std::endl;
 	  if(prev_script_timestamp==0)
-	    prev_script_timestamp=timestamp;
-	  if(timestamp-prev_script_timestamp>1000)
 	    {
-	      std::cout<<"script's timestamp is not continous"<<std::endl;
-	      std::cout<<"timestamp is "<<timestamp<<" ,prev_script_timestamp is "<<prev_script_timestamp<<std::endl;
-	      std::cout<<"pos is "<<lastpos<<std::endl;
-	      prev_script_timestamp=timestamp-40;
-
-	    }
-	  else
-	    {
-	      std::cout<<"normal script timestamp"<<std::endl;
-	      std::cout<<"pos is "<<lastpos<<std::endl;
+	      std::cout<<"delay script tag"<<std::endl;
 	      prev_script_timestamp=timestamp;
 	    }
+	  if(timestamp<prev_script_timestamp)
+	    timestamp=prev_script_timestamp+8;
+	  else
+	    {
+	      if(timestamp-prev_script_timestamp>1000)
+		{
+		  std::cout<<"script's timestamp is not continous"<<std::endl;
+		  std::cout<<"timestamp is "<<timestamp<<" ,prev_script_timestamp is "<<prev_script_timestamp<<std::endl;
+		  std::cout<<"pos is "<<lastpos<<std::endl;
+		  prev_script_timestamp=timestamp-40;
+		  
+		}
+	      else
+		{
+		  std::cout<<"normal script timestamp"<<std::endl;
+		  std::cout<<"pos is "<<lastpos<<std::endl;
+		  prev_script_timestamp=timestamp;
+		}
+	    }
+
 	  script_timestamp_offset+=timestamp-prev_script_timestamp;
-	  timestamp=script_timestamp_offset;
+	  timestamp=0;
 	  std::cout<<"script's timestamp is "<<timestamp<<std::endl;
 	  std::cout<<"length is "<<length_tagdata<<std::endl;
 	  if(!IsBigEndian())
 	    CvtEndian(&timestamp,4);
-	  lastpos+=4;
-	  flvfile.seekp(lastpos);
+	  flvfile.seekp(lastpos+4);
 	  flvfile.write(((char*)&timestamp)+1,3);
 	  flvfile.write((char*)&timestamp,1);
 	  break;
 	default:
 	  std::cout<<"unknown datatype"<<std::endl;
+	  std::cout<<"tag_type is "<<(int)tag_type<<std::endl;
 	  if(prev_type_video)
 	    timestamp=video_timestamp_offset;
 	  else
 	    timestamp=audio_timestamp_offset;
 	  if(!IsBigEndian())
 	    CvtEndian(&timestamp,4);
-	  lastpos+=4;
-	  flvfile.seekp(lastpos);
+	  flvfile.seekp(lastpos+4);
 	  flvfile.write(((char*)&timestamp)+1,3);
 	  flvfile.write((char*)&timestamp,1);
 	  break;
 	}
-      flvfile.seekp(lastpos+length_tagdata+11);
-      lastpos=flvfile.tellg();
+      lastpos+=length_tagdata+15;
+      flvfile.seekg(lastpos);
+      flvfile.seekp(lastpos);
     }
  
   flvfile.close();
-  std::cout<<std::dec<<std::endl;
+
 
 }
 void CF4FPaser::print()
@@ -681,7 +713,7 @@ int main()
   std::cout<<"filename_prex is "<<filename_prex<<std::endl;
   memcpy(f4fname,filename_prex.c_str(),filename_prex.size());
   myf4f.CreateFlvFile("videourl.flv");
-  std::cout<<"begin to combine f4files to flvfile"<<std::endl;
+  std::cout<<"begin to combine f4files to flvfile"<<std::endl<<std::endl;
   for(int n=first;n<=last;n++)
     {
       sprintf(f4fname+filename_prex.size(),"%d.f4f",n);

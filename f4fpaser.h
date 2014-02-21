@@ -68,7 +68,24 @@ class CF4FPaser
   std::string f4m_str;
   uint32_t current_frag,current_seg;
   uint32_t qualitylvl;
+
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
