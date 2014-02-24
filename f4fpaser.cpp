@@ -211,6 +211,7 @@ int CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qual
 	  current_frag=pF4mInfo->last_seg_fragcount[qualitylvl]-1;
 	  std::cout<<"update bootstrap"<<std::endl;
 	}
+     
       std::cout<<"live stream"<<std::endl;
       std::cout<<"the livestream's current seg is  "<<current_seg<<" , current frag is "<<current_frag<<std::endl;
       std::cout<<"last_seg is "<<pF4mInfo->last_seg[qualitylvl]<<" ,last_seg_fracount is "<<pF4mInfo->last_seg_fragcount[qualitylvl]<<std::endl;
@@ -244,11 +245,13 @@ int CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qual
   char* tmp_mediaurl=pF4mInfo->mediaurl[qualitylvl];
   if(strstr(tmp_mediaurl,"../")!=NULL)
     tmp_baseurl=f4m_baseurl.substr(0,f4m_baseurl.rfind("/"));
+
   while(strstr(tmp_mediaurl,"../")!=NULL)
     {
       tmp_mediaurl=strstr(tmp_mediaurl,"../")+2;
-      tmp_baseurl=tmp_baseurl.substr(0,f4m_baseurl.rfind("/"));
+      tmp_baseurl=tmp_baseurl.substr(0,tmp_baseurl.rfind("/"));
       std::cout<<"tmp_baseurl is "<<tmp_baseurl<<std::endl;
+      std::cout<<"tmp_mediaurl is "<<tmp_mediaurl<<std::endl;
     }
   videourl.append(tmp_baseurl);
   videourl.append(tmp_mediaurl);
@@ -352,23 +355,19 @@ void CF4FPaser::GetBootstrap(F4MINFO* pF4mInfo,int qualitylvl)
   if(pF4mInfo->livestream)
     {
       std::cout<<"fail to finding bootstrap in f4m file"<<std::endl;
-      std::string bootstrap_url;
+      std::string tmp_baseurl=f4m_baseurl;
       char* tmp_bootstrap_url=(char*)pF4mInfo->bootstrap[qualitylvl].c_str();
       
       if(strstr(tmp_bootstrap_url,"../")!=NULL)
-	bootstrap_url=f4m_baseurl.substr(0,f4m_baseurl.rfind("/"));
+	tmp_baseurl=tmp_baseurl.substr(0,tmp_baseurl.rfind("/"));
       while(strstr(tmp_bootstrap_url,"../")!=NULL)
 	{
 	  tmp_bootstrap_url=(strstr(tmp_bootstrap_url,"../")+2);
-	  bootstrap_url=bootstrap_url.substr(0,bootstrap_url.rfind("/"));
-	  std::cout<<"tmp_boostrap_url is  "<<tmp_bootstrap_url<<std::endl;
-	  std::cout<<"bootstrap_url is "<<bootstrap_url<<std::endl;
+	  tmp_baseurl=tmp_baseurl.substr(0,tmp_baseurl.rfind("/"));
 	}
-      bootstrap_url.append(tmp_bootstrap_url);
-      int myint;
-      std::cin>>myint;
-      std::cout<<"result url is "<<bootstrap_url<<std::endl;
-      WriteToStringFromUrl(bootstrap_url,pF4mInfo->bootstrap[qualitylvl]);
+      tmp_baseurl.append(tmp_bootstrap_url);
+      std::cout<<"result url is "<<tmp_baseurl<<std::endl;
+      WriteToStringFromUrl(tmp_baseurl,pF4mInfo->bootstrap[qualitylvl]);
     }
   else
     {
