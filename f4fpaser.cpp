@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string.h>
 #include <iostream>
-
+#include <unistd.h>
 
 
 static const char cd64[]="|$$$}rstuvwxyz{$$$$$$$>?@ABCDEFGHIJKLMNOPQRSTUVW$$$$$$XYZ[\\]^_`abcdefghijklmnopq";
@@ -69,9 +69,6 @@ int WriteToString(void* buff,size_t size,size_t count,void* userdata)
   size_t datalen=size*count;
   std::string *str=(std::string*)userdata;
   str->append((char*)buff,datalen);
-  std::fstream mytmp("./tmp",std::fstream::out|std::fstream::app);
-  mytmp.write((char*)str->c_str(),str->size());
-  mytmp.close();
   return datalen;
 }
 
@@ -81,7 +78,7 @@ int WriteToFile(void* buff,size_t size,size_t count,void* userdata)
   size_t datalen=size*count;
   char f4fname[30];
   memset(f4fname,0,30);
-  sprintf(f4fname,"video%d.f4f",*n);
+  sprintf(f4fname,"video%d",*n);
   std::fstream fs(f4fname,std::fstream::out|std::fstream::binary|std::fstream::app);
   fs.write((char*)buff,datalen);
   fs.close();
@@ -201,20 +198,30 @@ int CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qual
 {
   if(pF4mInfo->livestream)
     {
+      if(current_seg==0)
+	{
+	  current_seg=pF4mInfo->last_seg[qualitylvl];
+	  current_frag=0;
+	}
       current_seg=pF4mInfo->last_seg[qualitylvl];
+      if(current_seg<1)
+	current_seg=1;
       if(current_frag<pF4mInfo->last_seg_fragcount[qualitylvl])
 	current_frag++;
       else
 	{
 	  GetBootstrap(pF4mInfo,qualitylvl);
 	  GetSegFragInfo(pF4mInfo,qualitylvl);
-	  current_frag=pF4mInfo->last_seg_fragcount[qualitylvl]-1;
+	  //	  current_frag=pF4mInfo->last_seg_fragcount[qualitylvl]-2;
+	  if(current_frag<0)
+	    current_frag=0;
 	  std::cout<<"update bootstrap"<<std::endl;
 	}
-     
+      
       std::cout<<"live stream"<<std::endl;
       std::cout<<"the livestream's current seg is  "<<current_seg<<" , current frag is "<<current_frag<<std::endl;
       std::cout<<"last_seg is "<<pF4mInfo->last_seg[qualitylvl]<<" ,last_seg_fracount is "<<pF4mInfo->last_seg_fragcount[qualitylvl]<<std::endl;
+      std::cout<<"first_seg is "<<pF4mInfo->first_seg[qualitylvl]<<" ,first_seg_fragcount is "<<pF4mInfo->first_seg_fragcount[qualitylvl]<<std::endl;
     }
   else
     {
@@ -257,10 +264,10 @@ int CF4FPaser::GetVideoSegUrl(std::string &videourl, F4MINFO *pF4mInfo, int qual
   videourl.append(tmp_mediaurl);
   char buffer[100];
   memset(buffer,0,100);
-  sprintf(buffer,"Seg%d-Frag%d",current_seg,current_frag);
+  sprintf(buffer,"Seg%d-Frag%d",current_seg,(pF4mInfo->last_seg[qualitylvl]-1)*pF4mInfo->first_seg_fragcount[qualitylvl]+current_frag);
   videourl.append(buffer);
   std::cout<<"videourl in GetVideoSegUrl is "<<videourl<<std::endl;
-
+  
   return 0;
 }
 
@@ -310,6 +317,9 @@ void CF4FPaser::GetSegFragInfo(F4MINFO* pF4mInfo,int qualitylvl)
   pF4mInfo->last_seg_fragcount[qualitylvl]=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pos+4));
   if(!isbigendian())
     cvtendian(&pF4mInfo->last_seg_fragcount[qualitylvl],4);
+
+  std::cout<<"first_seg is "<<pF4mInfo->first_seg[qualitylvl]<<" ,first_seg_fragcount is "<<pF4mInfo->first_seg_fragcount[qualitylvl]<<" ,last_seg is "<<pF4mInfo->last_seg[qualitylvl]<<" ,last_seg_fragcount is "<<pF4mInfo->last_seg_fragcount[qualitylvl]<<std::endl;
+
 
   tag_length=(*(uint32_t*)(pF4mInfo->bootstrap[qualitylvl].c_str()+pF4mInfo->bootstrap[qualitylvl].find("afrt")-4));
   if(!isbigendian())
@@ -706,22 +716,22 @@ int main()
 #ifdef F4F_MAKER
   int first=0,last=0;
   std::string filename_prex;
-  std::cout<<"input the common string of all the files"<<std::endl;
+  std::cout<<"input the prex common string of all the files"<<std::endl;
   std::cin>>filename_prex;
   std::cout<<"input the first f4ffile's number and the last f4ffile's number to make a flv file.I will makeup all the files between them."<<std::endl;
   std::cout<<"first f4ffile's number:";
   std::cin>>first;
   std::cout<<"last f4ffile's number:";
   std::cin>>last;
-  char f4fname[30];
-  memset(f4fname,0,30);
+  char f4fname[100];
+  memset(f4fname,0,100);
   std::cout<<"filename_prex is "<<filename_prex<<std::endl;
   memcpy(f4fname,filename_prex.c_str(),filename_prex.size());
   myf4f.CreateFlvFile("videourl.flv");
   std::cout<<"begin to combine f4files to flvfile"<<std::endl<<std::endl;
   for(int n=first;n<=last;n++)
     {
-      sprintf(f4fname+filename_prex.size(),"%d.f4f",n);
+      sprintf(f4fname+filename_prex.size(),"%d",n);
       std::cout<<"processing file:"<<f4fname<<std::endl;
       myf4f.WriteFlvDataFromF4file(f4fname,"videourl.flv");
     }
@@ -729,6 +739,7 @@ int main()
 
 
 #ifdef F4F_DOWNLOAD
+  uint32_t prev_seg,prev_frag;
   myf4f.SetF4m("http://cdnl3.1internet.tv-live.hds.adaptive.level3.net/hds-live11/livepkgr/_definst_/1tv-hd.f4m?e=1393241238");
   //myf4f.SetF4m("http://hdflashmegatv-f.akamaihd.net/z/,content/2012/07/27/k386195_%7BD5743677-B7DD-46C6-927A-5630BD688199%7D_lo.mp4,.csmil/manifest.f4m?hdcore=2.11.3&g=LUICOABJOFQO");
   //myf4f.SetF4m("http://vodhdkure-vh.akamaihd.net/z/f/2014/02/22/1113184/146979-trt-dizi-osmanli-tokadi-30_,270,360,480,p.mp4.csmil/manifest.f4m?hdnea=st=1393236313~exp=1393237713~acl=/*~hmac=5ea37e17f1150e7c4886638b48de58c93c06355486c05fe96cb3e636ffa960f4&g=TINSFCKSSQMC&hdcore=3.2.0&plugin=jwplayer-3.2.0.1");
@@ -753,15 +764,22 @@ int main()
       std::cout<<"last_seg["<<n<<"] is "<<myf4minfo.last_seg[n]<<std::endl;
       std::cout<<"first_seg_fragcount["<<n<<"] is "<<myf4minfo.first_seg_fragcount[n]<<std::endl;
       std::cout<<"last_seg_fragcount["<<n<<"] is "<<myf4minfo.last_seg_fragcount[n]<<std::endl;
+
     }
-  myf4f.print();
   std::string mytmpstr;
   int n=0;
   CURL* hd_curl=curl_easy_init();
-  while(myf4f.GetVideoSegUrl(mytmpstr,&myf4minfo,2)==0)
+  while(myf4f.GetVideoSegUrl(mytmpstr,&myf4minfo,0)==0)
     {
+      if(myf4minfo.livestream && myf4f.current_seg==myf4minfo.last_seg[0] && myf4f.current_frag==myf4minfo.last_seg_fragcount[0] && prev_seg==myf4minfo.last_seg[0] && prev_frag==myf4minfo.last_seg_fragcount[0])
+	{
+	  prev_seg=myf4minfo.last_seg[0];
+	  prev_frag=myf4minfo.last_seg_fragcount[0];
+	  continue;
+	  usleep(1000000);
+	}
       std::cout<<"mytmpstr is "<<mytmpstr<<std::endl;
-      //   curl_easy_setopt(hd_curl,CURLOPT_USERAGENT,"Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)");
+      //   curl_easy_setopt(hd_curl,curlopt_useragent,"mozilla/5.0 (compatible; msie 9.0; windows nt 6.1; wow64; trident/5.0)");
       curl_easy_setopt(hd_curl,CURLOPT_URL,mytmpstr.c_str());
       curl_easy_setopt(hd_curl,CURLOPT_WRITEFUNCTION,&WriteToFile);
       curl_easy_setopt(hd_curl,CURLOPT_WRITEDATA,&n);
@@ -772,6 +790,8 @@ int main()
 	  std::cout<<"cannot download video"<<std::endl;
 	}
       n++;
+      prev_seg=myf4minfo.last_seg[0];
+      prev_frag=myf4minfo.last_seg_fragcount[0];
     }
   curl_easy_cleanup(hd_curl);
   std::cout<<"videourl is "<<mytmpstr<<std::endl;

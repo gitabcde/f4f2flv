@@ -66,8 +66,9 @@ class CF4FPaser
   CURL* hd_curl;
   std::string f4m_baseurl;
   std::string f4m_str;
+ public:
   uint32_t current_frag,current_seg;
-  uint32_t qualitylvl;
+
 
 };
 
