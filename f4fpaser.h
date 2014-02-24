@@ -57,7 +57,7 @@ class CF4FPaser
   void print();
   // private:
   int GetTagInfoFromFile(char* f4file,char* tagname,F4FTagInfo* taginfo);
-  void AjustFlvTimeStamp(char* flvname);
+  void FixTimeStampAndWriteFlvData(char* flvname,char* f4fname,F4FTagInfo* taginfo);
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
   bool have_set_zero_audio,have_set_zero_video;

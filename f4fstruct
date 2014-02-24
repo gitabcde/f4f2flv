@@ -68,7 +68,6 @@ struct afrt
 #endif
  }afrt_fraginfo[fragEntries];	  
 };
-
 f4f文件结构
 struct f4f
 {
@@ -132,7 +131,43 @@ struct flv
 
 struct AudioData
 {
- uint8_t flag;//从高到低，前4位代表了音频数据格式，1表示ADPCM,2表示mp3,4表示Nellymoser 160khz mono,5表示Nellymoser 8-khz mono,10表示AAC,5-6位表示采样率,0=5.5khz,1=11khz,2=22khz,3=44khz,第7位表示采样精度,0=8bits,1=16bits,第8为表示音频类型，0=mono,1=stereo
+ uint8_t SoundFormat:4;
+/*
+0 = Linear PCM, platform endian
+1 = ADPCM
+2 = MP3
+3 = Linear PCM, little endian
+4 = Nellymoser 16 kHz mono
+5 = Nellymoser 8 kHz mono
+6 = Nellymoser
+7 = G.711 A-law logarithmic PCM
+8 = G.711 mu-law logarithmic PCM
+9 = reserved
+10 = AAC
+11 = Speex
+14 = MP3 8 kHz
+15 = Device-specific sound
+Formats 7, 8, 14, and 15 are reserved.
+AAC is supported in Flash Player 9,0,115,0 and higher.
+Speex is supported in Flash Player 10 and higher.
+*/
+uint8_t SoundRate:2;
+/*
+sample rate:
+0=5.5khz
+1=11khz
+2=22khz
+4=44khz
+*/
+uint8_t SoundSize:1;
+/*
+Size of each audio sample. This parameter only pertains to
+uncompressed formats. Compressed formats always decode
+to 16 bits internally.
+0 = 8-bit samples
+1 = 16-bit samples
+*/
+从高到低，前4位代表了音频数据格式，1表示ADPCM,2表示mp3,4表示Nellymoser 160khz mono,5表示Nellymoser 8-khz mono,10表示AAC,5-6位表示采样率,0=5.5khz,1=11khz,2=22khz,3=44khz,第7位表示采样精度,0=8bits,1=16bits,第8为表示音频类型，0=mono,1=stereo
  uint8_t data;
 
 };
