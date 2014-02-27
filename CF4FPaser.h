@@ -1,8 +1,10 @@
+#ifndef CF4FPASER_H
+#define CF4FPASER_H
+
 #include "moyea_base_types.h"
-#include <fstream>
-#include <vector>
 #include <string>
-#include <curl/curl.h>
+#include <fstream>
+#include "libcurl/curl.h"
 #define F4F_BUFFER_SIZE 4096
 
 
@@ -38,7 +40,8 @@ typedef struct tag_F4MINFO
   uint32_t* last_frag_duration;
 }F4MINFO;
 
-char FLVHEADER[]={'F','L','V',0x01,0x05,0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x00};
+
+int WriteToFile(void* buff,size_t size,size_t count,void* userdata);
 
 class CF4FPaser
 {
@@ -54,10 +57,9 @@ class CF4FPaser
   void GetSegFragInfo(F4MINFO* pF4mInfo,int qualitylvl);
   void CreateFlvFile(char* filename);
   void WriteFlvDataFromF4file(char* f4file,char* flvname);
-  void print();
   // private:
-  int GetTagInfoFromFile(char* f4file,char* tagname,F4FTagInfo* taginfo);
-  void FixTimeStampAndWriteFlvData(char* flvname,char* f4fname,F4FTagInfo* taginfo);
+  int GetTagInfoFromFile(char* f4file,char* tagname);
+  void FixTimeStampAndWriteFlvData(char* flvname,char* f4fname);
  private:
   uint32_t prev_video_timestamp,video_timestamp_offset,prev_audio_timestamp,audio_timestamp_offset,prev_script_timestamp,script_timestamp_offset,timestamp;
   bool have_set_zero_audio,have_set_zero_video;
@@ -66,14 +68,16 @@ class CF4FPaser
   CURL* hd_curl;
   std::string f4m_baseurl;
   std::string f4m_str;
+  std::string f4f_str;
  public:
   uint32_t current_frag,current_seg;
-
+  std::string prev_f4filename;
+  F4FTagInfo m_f4ftaginfo;
 
 };
 
 
-
+#endif
 
 
 
